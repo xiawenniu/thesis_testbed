@@ -45,12 +45,11 @@ int main(int argv, char *argc[])
     for(int i =0;i<dirSize;i++){
         vector<string> files;
         int fileSize = get_files(dirs[i], files);
-        sort(files.begin(), files.end());
-        for(int j =0;j<fileSize;j=j+2){
-            run(files[j], files[j+1],  1);
+        for(int j =0;j<fileSize;j++){
+            run(files[j], "./",  0);
         }
         cout<<"已经跑完---目录："<<dirs[i]<<endl;
-        fout<<totalFileSize<<'\t'<<totalChunkSize<<'\n';
+        fout<<totalChunkSize<<'\n';
     }
     close();
     fout.close();
