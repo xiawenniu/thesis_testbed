@@ -3,9 +3,12 @@
 #include <cstring>
 #include "backward.hpp"
 #include <iostream>
-
+#include <boost/filesystem.hpp>
+#include <algorithm>
+namespace fs = boost::filesystem;
 #define MAX_FP 6
 using namespace std;
+
 Database chunkDb, fileDb;
 std::ifstream chunkInfoPath;
 std::ifstream fileMetaPath;
@@ -18,38 +21,56 @@ void countChunkSize(u_char *fp, string &chunkLine, long& fileSize);
 void countFileSize(u_char *receipe, int len, long fileSize);
 void calcuChunk();
 void close();
+void run(const string& chunkInfo, const string& fileMeta, int choice);
+int get_dirs(const std::string& dir, std::vector<std::string>& dirs);
+int get_files(const std::string& dir, std::vector<std::string>& files);
 int main(int argv, char *argc[])
 {
-    if(argv<7){
+    if(argv<3){
         cerr<<"请输入正确参数个数"<<endl;
     }
+    string datasetDir(argc[1]);
+    string output(argc[2]);
 
-    crypto = new CryptoPrimitive();
-    string chunkInfo(argc[1]);// chunk info file
-    loadFile(chunkInfo, chunkInfoPath);
-    string fileMeta(argc[2]); // file info file
-    string output(argc[3]);   // 输出位置
-    int choice = atoi(argc[4]);
-    chunkDb.openDB(argc[5]);
-    fileDb.openDB(argc[6]);
     ofstream fout;
     fout.open(output, ios::app);
+
+    crypto = new CryptoPrimitive();
+    chunkDb.openDB("db/chunkdb");
+    fileDb.openDB("db/filedb");
+
+    vector<string> dirs;
+    int dirSize = get_dirs(datasetDir, dirs);
+    sort(dirs.begin(), dirs.end());
+    for(int i =0;i<dirSize;i++){
+        vector<string> files;
+        int fileSize = get_files(dirs[i], files);
+        sort(files.begin(), files.end());
+        for(int j =0;j<fileSize;j=j+2){
+            run(files[j], files[j+1],  1);
+        }
+        cout<<"已经跑完---目录："<<dirs[i]<<endl;
+        fout<<totalFileSize<<'\t'<<totalChunkSize<<'\n';
+    }
+    close();
+    fout.close();
+    free(crypto);
+    return 0;
+}
+void run(const string& chunkInfo, const string& fileMeta, int choice){
+    loadFile(chunkInfo, chunkInfoPath);
+
     switch(choice) {  //0：只统计chunk级去重 1：统计file级去重和chunk级去重
         case 0:
             calcuChunk();
-            fout<<totalChunkSize<<'\n';
             break;
         case 1:
             loadFile(fileMeta, fileMetaPath);
             calcuFile();
-            fout<<totalFileSize<<'\t'<<totalChunkSize<<'\n';
             break;
 
     }
-    fout.close();
-    close();
-    free(crypto);
-    return 0;
+
 }
 void calcuChunk()
 {
@@ -144,7 +165,7 @@ void loadFile(const string& path, ifstream &pStream)
     pStream.open(path);
     if (!pStream.is_open())
     {
-        cerr << "Chunker : open file: " << path << "error, client exit now" << endl;
+        cerr << " open file: " << path << "error, client exit now" << endl;
         exit(1);
     }
 }
@@ -155,4 +176,36 @@ void close(){
     if(fileMetaPath.is_open()){
         fileMetaPath.close();
     }
+}
+int get_dirs(const std::string& dir, std::vector<std::string>& dirs)
+{
+    fs::path path(dir);
+    if(!fs::exists(path)) {
+        return -1;
+    }
+
+    fs::directory_iterator end_iter;
+    for(fs::directory_iterator iter(path); iter != end_iter; ++iter) {
+        if(fs::is_directory(iter->status())) {
+            dirs.push_back(iter->path().string());
+        }
+
+    }
+    return dirs.size();
+}
+
+int get_files(const std::string& dir, std::vector<std::string>& files)
+{
+    fs::path path(dir);
+    if(!fs::exists(path)) {
+        return -1;
+    }
+
+    fs::directory_iterator end_iter;
+    for(fs::directory_iterator iter(path); iter != end_iter; ++iter) {
+        if(fs::is_regular_file(iter->status())) {
+            files.push_back(iter->path().string());
+        }
+    }
+    return files.size();
 }
