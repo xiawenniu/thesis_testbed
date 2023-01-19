@@ -49,8 +49,8 @@ int main(int argv, char *argc[])
         for(int j =0;j<fileSize;j=j+2){
             run(files[j], files[j+1],  1);
         }
+        fout<<totalFileSize<<'\t'<<totalChunkSize<<'\n'<<flush;
         cout<<"已经跑完---目录："<<dirs[i]<<endl;
-        fout<<totalFileSize<<'\t'<<totalChunkSize<<'\n';
     }
     close();
     fout.close();
@@ -92,10 +92,10 @@ void calcuFile()
     string fileLine, chunkLine;
     getline(chunkInfoPath, chunkLine);
     while(true){
+        getline(fileMetaPath, fileLine);
         if(fileMetaPath.eof()){
             break;
         }
-        getline(fileMetaPath, fileLine);
         int chunks =0;
         if(!IsChunkNum(fileLine, chunks)||chunks==0){
             continue ;
